@@ -93,14 +93,14 @@ function UserManagementPage() {
   const [newEmail, setNewEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [showNewUserPassword, setShowNewUserPassword] = useState(false);
-  const [newRole, setNewRole] = useState<AppRole>("admin_process");
+  const [newRole, setNewRole] = useState<AppRole>("teknisi");
   const [newDept, setNewDept] = useState("");
 
   // State Modal Edit User
   const [editingUser, setEditingUser] = useState<ProfileRow | null>(null);
   const [editFullName, setEditFullName] = useState("");
   const [editDept, setEditDept] = useState("");
-  const [editRole, setEditRole] = useState<AppRole>("admin_process");
+  const [editRole, setEditRole] = useState<AppRole>("teknisi");
 
   // State Modal Hapus User
   const [deletingUser, setDeletingUser] = useState<ProfileRow | null>(null);
@@ -115,8 +115,23 @@ function UserManagementPage() {
   const profiles = useQuery({ queryKey: ["profiles"], queryFn: fetchProfiles });
   const roles = useQuery({ queryKey: ["user-roles"], queryFn: fetchUserRoles });
 
-  const roleOf = (userId: string): AppRole | undefined =>
-    roles.data?.find((r) => r.user_id === userId)?.role as AppRole | undefined;
+  const roleOf = (userId: string): AppRole | undefined => {
+    const directRole = roles.data?.find((r) => r.user_id === userId)?.role as AppRole | undefined;
+    if (directRole === "teknisi") return "teknisi";
+    const p = profiles.data?.find((x) => x.id === userId);
+    if (p?.department) {
+      const dUpper = p.department.trim().toUpperCase();
+      if (
+        dUpper.includes("TEKNIK") ||
+        dUpper.includes("TEKNISI") ||
+        dUpper.includes("TES1201") ||
+        dUpper.includes("TES GROUND")
+      ) {
+        return "teknisi";
+      }
+    }
+    return directRole;
+  };
 
   // Sinkronisasi otomatis daftar email akun per role ke localStorage untuk login role + kata sandi
   useEffect(() => {
@@ -130,7 +145,7 @@ function UserManagementPage() {
           if (p.email) {
             const em = p.email.toLowerCase();
             allKnownSet.add(em);
-            const userRole = roles.data.find((r) => r.user_id === p.id)?.role as AppRole | undefined;
+            const userRole = roleOf(p.id);
             if (userRole) {
               const list = Array.isArray(map[userRole]) ? map[userRole] : [];
               if (!list.includes(em)) {
@@ -173,7 +188,7 @@ function UserManagementPage() {
     mutationFn: async () => {
       const name = newFullName.trim();
       const email = newEmail.trim().toLowerCase();
-      const dept = newDept.trim() || ROLE_LABELS[newRole];
+      const dept = newDept.trim() || (newRole === "teknisi" ? "TEKNIK1201" : ROLE_LABELS[newRole]);
 
       if (name.length < 2) throw new Error("Nama lengkap minimal 2 karakter");
       if (!email.includes("@")) throw new Error("Format email tidak valid");
@@ -195,19 +210,105 @@ function UserManagementPage() {
         },
       });
 
+      // 1. Cek apakah email sudah terdaftar di sistem
+      const existingUser =
+        profiles.data?.find((p) => p.email?.trim().toLowerCase() === email) ||
+        (await supabase.from("profiles").select("id, email, full_name").ilike("email", email).maybeSingle()).data;
+
+      if (existingUser?.id) {
+        // Jika akun yang didaftarkan adalah akun admin yang sedang login
+        if (existingUser.id === currentProfile?.id) {
+          await supabase
+            .from("profiles")
+            .update({ full_name: name, department: dept })
+            .eq("id", existingUser.id);
+          await supabase.from("user_roles").delete().eq("user_id", existingUser.id);
+          const assignedRole = newRole === "teknisi" ? "admin_process" : newRole;
+          await supabase.from("user_roles").insert({ user_id: existingUser.id, role: assignedRole });
+          return;
+        }
+
+        // Hapus akun lama secara tuntas dari auth.users & profiles via delete_user_by_admin
+        // sehingga user dapat didaftarkan ulang dengan kata sandi baru tanpa error "User already registered"
+        try {
+          const { error: delErr } = await (supabase as any).rpc("delete_user_by_admin", {
+            target_user_id: existingUser.id,
+          });
+          if (delErr) {
+            console.warn("RPC delete_user_by_admin gagal, fallback ke direct delete:", delErr);
+            await supabase.from("user_roles").delete().eq("user_id", existingUser.id);
+            await supabase.from("profiles").delete().eq("id", existingUser.id);
+          }
+        } catch (delCatch) {
+          console.warn("delete_user error:", delCatch);
+        }
+      }
+
+      // 2. Daftarkan akun baru ke Supabase Auth
+      // Gunakan dbRole (admin_process) agar trigger PostgreSQL Supabase tidak error saat casting enum
+      const dbRole = newRole === "teknisi" ? "admin_process" : newRole;
       const { data, error } = await authClient.auth.signUp({
         email,
         password: newPassword,
         options: {
           data: {
             full_name: name,
-            role: newRole,
+            role: dbRole,
             department: dept,
           },
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        // Jika masih muncul "User already registered" (misal akun ada di auth.users tapi belum sempat terhapus)
+        if (
+          error.message.toLowerCase().includes("already registered") ||
+          error.message.toLowerCase().includes("already exists")
+        ) {
+          const targetId = existingUser?.id;
+          if (targetId) {
+            // Update profile dan role user yang ada
+            await supabase
+              .from("profiles")
+              .upsert({
+                id: targetId,
+                full_name: name,
+                email,
+                department: dept,
+              });
+            await supabase.from("user_roles").delete().eq("user_id", targetId);
+            const assignedRole = newRole === "teknisi" ? "admin_process" : newRole;
+            await supabase.from("user_roles").insert({ user_id: targetId, role: assignedRole });
+            return;
+          }
+
+          // Coba login dengan password yang baru diinput untuk mendapatkan user ID
+          const { data: signInData, error: signInErr } = await authClient.auth.signInWithPassword({
+            email,
+            password: newPassword,
+          });
+
+          if (!signInErr && signInData?.user?.id) {
+            await supabase
+              .from("profiles")
+              .upsert({
+                id: signInData.user.id,
+                full_name: name,
+                email,
+                department: dept,
+              });
+            await supabase.from("user_roles").delete().eq("user_id", signInData.user.id);
+            const assignedRole = newRole === "teknisi" ? "admin_process" : newRole;
+            await supabase.from("user_roles").insert({ user_id: signInData.user.id, role: assignedRole });
+            return;
+          }
+
+          throw new Error(
+            `Email "${email}" sudah terdaftar di sistem. Anda dapat memperbarui peran & data profil langsung melalui tombol edit (ikon pensil) di tabel daftar pengguna.`
+          );
+        }
+        throw error;
+      }
 
       // Sinkronisasi tabel profiles & user_roles menggunakan client utama (sesi admin)
       if (data.user?.id) {
@@ -221,11 +322,12 @@ function UserManagementPage() {
           })
           .eq("id", data.user.id);
 
+        const assignedRole = newRole === "teknisi" ? "admin_process" : newRole;
         await supabase
           .from("user_roles")
           .upsert({
             user_id: data.user.id,
-            role: newRole,
+            role: assignedRole,
           });
       }
     },
@@ -256,7 +358,7 @@ function UserManagementPage() {
       setNewEmail("");
       setNewPassword("");
       setShowNewUserPassword(false);
-      setNewRole("admin_process");
+      setNewRole("teknisi");
       setNewDept("");
       queryClient.invalidateQueries({ queryKey: ["profiles"] });
       queryClient.invalidateQueries({ queryKey: ["user-roles"] });
@@ -274,9 +376,10 @@ function UserManagementPage() {
       if (name.length < 2) throw new Error("Nama lengkap minimal 2 karakter");
 
       // 1. Update Profile (Nama & Departemen)
+      const targetDept = dept || (editRole === "teknisi" ? "TEKNIK1201" : undefined);
       const { error: profileErr } = await supabase
         .from("profiles")
-        .update({ full_name: name, department: dept || null })
+        .update({ full_name: name, department: targetDept || null })
         .eq("id", editingUser.id);
 
       if (profileErr) throw profileErr;
@@ -287,9 +390,10 @@ function UserManagementPage() {
         const del = await supabase.from("user_roles").delete().eq("user_id", editingUser.id);
         if (del.error) throw del.error;
 
+        const assignedRole = editRole === "teknisi" ? "admin_process" : editRole;
         const { error: roleErr } = await supabase
           .from("user_roles")
-          .insert({ user_id: editingUser.id, role: editRole });
+          .insert({ user_id: editingUser.id, role: assignedRole });
         if (roleErr) throw roleErr;
       }
     },
@@ -391,7 +495,7 @@ function UserManagementPage() {
     setEditingUser(u);
     setEditFullName(u.full_name || "");
     setEditDept(u.department || "");
-    setEditRole(roleOf(u.id) || "admin_process");
+    setEditRole(roleOf(u.id) || "teknisi");
   };
 
   // Filter & Search List User
@@ -524,7 +628,7 @@ function UserManagementPage() {
                             userRole === "admin" && "bg-purple-500/10 text-purple-700 border-purple-300 dark:text-purple-300",
                             userRole === "prod_process_uh" && "bg-blue-500/10 text-blue-700 border-blue-300 dark:text-blue-300",
                             userRole === "qc_field" && "bg-amber-500/10 text-amber-700 border-amber-300 dark:text-amber-300",
-                            userRole === "admin_process" && "bg-emerald-500/10 text-emerald-700 border-emerald-300 dark:text-emerald-300",
+                            userRole === "teknisi" && "bg-cyan-500/10 text-cyan-700 border-cyan-300 dark:text-cyan-300",
                           )}
                         >
                           {ROLE_LABELS[userRole] || userRole}
@@ -675,7 +779,7 @@ function UserManagementPage() {
               <Input
                 value={newDept}
                 onChange={(e) => setNewDept(e.target.value)}
-                placeholder={ROLE_LABELS[newRole]}
+                placeholder={newRole === "teknisi" ? "TES GROUND" : ROLE_LABELS[newRole]}
               />
             </div>
 

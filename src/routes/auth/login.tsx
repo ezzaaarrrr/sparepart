@@ -110,15 +110,18 @@ function getCandidateEmailsForRole(targetRole: AppRole): string[] {
       "quality@gmail.com",
       "continuous_improvement@gmail.com",
     ],
-    admin_process: [
-      "ezzaaarrrr@gmail.com",
+    teknisi: [
+      "teknik1201@gmail.com",
+      "teknik@gmail.com",
+      "teknisi@gmail.com",
+      "tes1201@gmail.com",
+      "tesground@gmail.com",
+      "teknisi_tes_ground@gmail.com",
+      "ground@gmail.com",
+      "teknisi@qcoffee.com",
+      "teknisi@coffee.m2",
       "ck1201@gmail.com",
-      "admin_process@gmail.com",
       "produksi@gmail.com",
-      "produksi_cheking@gmail.com",
-      "cheking@gmail.com",
-      "admin_process@qcoffee.com",
-      "admin_process@coffee.m2",
       "operator@gmail.com",
     ],
     admin: [
@@ -315,6 +318,24 @@ function LoginPage() {
 
       if (!rolesError && userRoles && userRoles.length > 0) {
         const registeredRoles = userRoles.map((r) => r.role as AppRole);
+        const { data: prof } = await supabase
+          .from("profiles")
+          .select("department")
+          .eq("id", authenticatedUser.id)
+          .maybeSingle();
+        if (prof?.department) {
+          const dUpper = prof.department.trim().toUpperCase();
+          if (
+            dUpper.includes("TEKNIK") ||
+            dUpper.includes("TEKNISI") ||
+            dUpper.includes("TES1201") ||
+            dUpper.includes("TES GROUND")
+          ) {
+            if (!registeredRoles.includes("teknisi")) {
+              registeredRoles.push("teknisi");
+            }
+          }
+        }
         const hasSelectedRole = registeredRoles.includes(role);
         const isSuperAdmin = registeredRoles.includes("admin");
 
@@ -442,9 +463,9 @@ function LoginPage() {
                   <SelectValue placeholder="Pilih Peran / Hak Akses" />
                 </SelectTrigger>
                 <SelectContent className="bg-[#081b3d] border-blue-900 text-white">
-                  <SelectItem value="admin_process">{ROLE_LABELS["admin_process"]}</SelectItem>
                   <SelectItem value="qc_field">{ROLE_LABELS["qc_field"]}</SelectItem>
                   <SelectItem value="prod_process_uh">{ROLE_LABELS["prod_process_uh"]}</SelectItem>
+                  <SelectItem value="teknisi">{ROLE_LABELS["teknisi"]}</SelectItem>
                   <SelectItem value="admin">{ROLE_LABELS["admin"]}</SelectItem>
                 </SelectContent>
               </Select>

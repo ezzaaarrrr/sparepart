@@ -33,7 +33,7 @@ function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
-  const [role, setRole] = useState<AppRole>("admin_process");
+  const [role, setRole] = useState<AppRole>("prod_process_uh");
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -52,12 +52,13 @@ function RegisterPage() {
       return;
     }
     setLoading(true);
+    const dbRole = role === "teknisi" ? "admin_process" : role;
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        // Tidak ada emailRedirectTo — konfirmasi email dinonaktifkan
-        data: { full_name: fullName, role, department: ROLE_LABELS[role] },
+        // Gunakan dbRole (admin_process) agar trigger PostgreSQL tidak crash casting enum
+        data: { full_name: fullName, role: dbRole, department: ROLE_LABELS[role] },
       },
     });
     setLoading(false);
@@ -65,6 +66,17 @@ function RegisterPage() {
     if (error) {
       toast.error("Gagal mendaftar", { description: error.message });
       return;
+    }
+
+    if (data?.user?.id) {
+      await supabase
+        .from("profiles")
+        .upsert({
+          id: data.user.id,
+          full_name: fullName,
+          email,
+          department: ROLE_LABELS[role],
+        });
     }
 
     // Supabase otomatis membuat session saat email confirmation dinonaktifkan.
@@ -160,9 +172,9 @@ function RegisterPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="admin_process">{ROLE_LABELS["admin_process"]}</SelectItem>
                   <SelectItem value="qc_field">{ROLE_LABELS["qc_field"]}</SelectItem>
                   <SelectItem value="prod_process_uh">{ROLE_LABELS["prod_process_uh"]}</SelectItem>
+                  <SelectItem value="teknisi">{ROLE_LABELS["teknisi"]}</SelectItem>
                 </SelectContent>
               </Select>
             </div>

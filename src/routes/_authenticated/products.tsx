@@ -1085,7 +1085,7 @@ function WarehouseAndProductsPage() {
 
   // Hak akses Departemen Warehouse Sparepart & Continuous Improvement
   const isWarehouseAdmin =
-    isAdmin || roles.includes("prod_process_uh") || roles.includes("admin_process");
+    isAdmin || roles.includes("prod_process_uh") || roles.includes("teknisi");
   const canManageWarehouse = isWarehouseAdmin || roles.includes("qc_field");
   const canDeleteMaster = isAdmin || roles.includes("prod_process_uh");
 

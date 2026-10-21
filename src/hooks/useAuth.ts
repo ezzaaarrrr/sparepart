@@ -57,11 +57,27 @@ export function useCurrentUser() {
         .select("role")
         .eq("user_id", user!.id);
       if (error) throw error;
-      return (data ?? []).map((r) => r.role as AppRole);
+      return (data ?? []).map((r) =>
+        (r.role as string) === "admin_process" ? "prod_process_uh" : (r.role as AppRole)
+      );
     },
   });
 
-  const roles = rolesQuery.data ?? [];
+  const rawRoles = rolesQuery.data ?? [];
+  const roles = [...rawRoles];
+  if (profileQuery.data?.department) {
+    const dUpper = profileQuery.data.department.trim().toUpperCase();
+    if (
+      dUpper.includes("TEKNIK") ||
+      dUpper.includes("TEKNISI") ||
+      dUpper.includes("TES1201") ||
+      dUpper.includes("TES GROUND")
+    ) {
+      if (!roles.includes("teknisi")) {
+        roles.push("teknisi");
+      }
+    }
+  }
   const hasRole = (...wanted: AppRole[]) => wanted.some((r) => roles.includes(r));
 
   return {
@@ -70,7 +86,7 @@ export function useCurrentUser() {
     roles,
     hasRole,
     isAdmin: hasRole("admin"),
-    canCreate: hasRole("admin_process", "qc_field", "prod_process_uh", "admin"),
+    canCreate: hasRole("qc_field", "prod_process_uh", "teknisi", "admin"),
     canReviewQc: hasRole("qc_field", "admin"),
     canApproveUh: hasRole("prod_process_uh", "admin"),
     loading: loading || profileQuery.isLoading || rolesQuery.isLoading,

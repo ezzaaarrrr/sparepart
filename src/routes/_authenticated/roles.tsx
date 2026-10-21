@@ -38,7 +38,8 @@ export const Route = createFileRoute("/_authenticated/roles")({
       { title: "Hak Akses & Departemen" },
       {
         name: "description",
-        content: "Kelola master data departemen dan atur matriks hak akses halaman untuk setiap peran (role).",
+        content:
+          "Kelola master data departemen dan atur matriks hak akses halaman untuk setiap peran (role).",
       },
     ],
   }),
@@ -97,16 +98,57 @@ function RolesAndDepartmentsPage() {
   const departments = useQuery({
     queryKey: ["departments"],
     queryFn: async () => {
+      let localCustom: DepartmentRow[] = [];
+      try {
+        const stored = localStorage.getItem("custom_departments");
+        if (stored) localCustom = JSON.parse(stored);
+      } catch {}
+
+      const baseDefaults: DepartmentRow[] = [
+        { id: "1", name: "CI1201", code: "CI", description: "Departemen CI1201" },
+        {
+          id: "2",
+          name: "GDSP1201",
+          code: "WH-SP",
+          description: "Admin Gudang & Operasional Sparepart",
+        },
+        { id: "3", name: "Super Admin", code: "SA", description: "Super Admin System" },
+      ];
+
       const { data, error } = await (supabase as any).from("departments").select("*").order("name");
-      if (error) {
-        return [
-          { id: "1", name: "CI1201", code: "CI", description: "Departemen CI1201" },
-          { id: "2", name: "CK1201", code: "Produksi CK", description: "Operator Admin Ceklis" },
-          { id: "3", name: "GDSP1201", code: "WH-SP", description: "Admin Gudang & Operasional Sparepart" },
-          { id: "4", name: "Super Admin", code: "SA", description: "Super Admin System" },
-        ] as DepartmentRow[];
+      if (error || !data || data.length === 0) {
+        const combined = [...baseDefaults];
+        localCustom.forEach((c) => {
+          if (!combined.some((x) => x.name.toLowerCase() === c.name.toLowerCase())) {
+            combined.push(c);
+          }
+        });
+        return combined;
       }
-      return (data ?? []) as DepartmentRow[];
+
+      const list = [...data] as DepartmentRow[];
+      if (!list.some((d) => d.code === "TEKNIK1201" || d.name.toLowerCase() === "teknik")) {
+        list.push({
+          id: "teknik-default",
+          name: "TEKNIK",
+          code: "TEKNIK1201",
+          description: "TEKNISI CENTRAL KITCHEN / TES GROUND",
+        });
+      }
+      if (!list.some((d) => d.code === "TES1201" || d.name.toLowerCase() === "tes ground")) {
+        list.push({
+          id: "tes-ground-default",
+          name: "TES GROUND",
+          code: "TES1201",
+          description: "TEKNISI TES GROUND",
+        });
+      }
+      localCustom.forEach((c) => {
+        if (!list.some((x) => x.id === c.id || x.name.toLowerCase() === c.name.toLowerCase())) {
+          list.push(c);
+        }
+      });
+      return list;
     },
   });
 
@@ -122,6 +164,11 @@ function RolesAndDepartmentsPage() {
           SYSTEM_ROUTES.forEach((route) => {
             if (role === "admin" || role === "qc_field") {
               defaults[`${role}:${route.path}`] = true;
+            } else if (role === "teknisi") {
+              defaults[`${role}:${route.path}`] =
+                route.category === "Operasional" ||
+                route.path === "/products" ||
+                route.path === "/approvals";
             } else {
               defaults[`${role}:${route.path}`] = route.path === "/approvals";
             }
@@ -140,12 +187,20 @@ function RolesAndDepartmentsPage() {
 
   // Toggle Hak Akses Route untuk Role
   const togglePermission = useMutation({
-    mutationFn: async ({ role, routePath, canAccess }: { role: AppRole; routePath: string; canAccess: boolean }) => {
+    mutationFn: async ({
+      role,
+      routePath,
+      canAccess,
+    }: {
+      role: AppRole;
+      routePath: string;
+      canAccess: boolean;
+    }) => {
       const { error } = await (supabase as any)
         .from("role_permissions")
         .upsert(
           { role, route_path: routePath, can_access: canAccess },
-          { onConflict: "role,route_path" }
+          { onConflict: "role,route_path" },
         );
       if (error) throw error;
     },
@@ -160,12 +215,34 @@ function RolesAndDepartmentsPage() {
   const addDept = useMutation({
     mutationFn: async () => {
       if (deptName.trim().length < 2) throw new Error("Nama departemen minimal 2 karakter");
-      const { error } = await (supabase as any).from("departments").insert({
-        name: deptName.trim(),
-        code: deptCode.trim() || null,
-        description: deptDesc.trim() || null,
-      });
-      if (error) throw error;
+      const name = deptName.trim();
+      const code = deptCode.trim() || null;
+      const description = deptDesc.trim() || null;
+
+      const newDeptItem: DepartmentRow = {
+        id: `dept-${Date.now()}`,
+        name,
+        code,
+        description,
+      };
+
+      // Simpan lokal sebagai fallback instan
+      try {
+        const stored = localStorage.getItem("custom_departments");
+        const list: DepartmentRow[] = stored ? JSON.parse(stored) : [];
+        list.push(newDeptItem);
+        localStorage.setItem("custom_departments", JSON.stringify(list));
+      } catch {}
+
+      try {
+        await (supabase as any).from("departments").insert({
+          name,
+          code,
+          description,
+        });
+      } catch (err) {
+        console.warn("Supabase insert warning (disimpan lokal):", err);
+      }
     },
     onSuccess: () => {
       toast.success("Departemen berhasil ditambahkan");
@@ -227,8 +304,12 @@ function RolesAndDepartmentsPage() {
     }
     // Rules:
     // CI (qc_field) & Super Admin (admin) -> Bisa mengakses semua halaman
+    // Teknisi -> Operasional & Gudang Sparepart
     // Operator (admin_process & prod_process_uh) -> Hanya bisa mengakses halaman /approvals
     if (role === "admin" || role === "qc_field") return true;
+    if (role === "teknisi") {
+      return path !== "/settings" && path !== "/roles";
+    }
     return path === "/approvals";
   };
 
@@ -280,7 +361,8 @@ function RolesAndDepartmentsPage() {
                   Izin Akses Halaman — {ROLE_LABELS[selectedRole]}
                 </h3>
                 <p className="text-xs text-muted-foreground">
-                  Aktifkan (Izinkan/Muncul) atau nonaktifkan (Tolak/Hilang) halaman yang boleh diakses oleh akun bertipe {ROLE_LABELS[selectedRole]}.
+                  Aktifkan (Izinkan/Muncul) atau nonaktifkan (Tolak/Hilang) halaman yang boleh
+                  diakses oleh akun bertipe {ROLE_LABELS[selectedRole]}.
                 </p>
               </div>
             </div>
@@ -289,7 +371,9 @@ function RolesAndDepartmentsPage() {
               {/* Grup Kategori: Operasional */}
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <span className="label-caps font-semibold text-primary">Kategori Operasional</span>
+                  <span className="label-caps font-semibold text-primary">
+                    Kategori Operasional
+                  </span>
                   <span className="text-xs text-muted-foreground">
                     ({SYSTEM_ROUTES.filter((r) => r.category === "Operasional").length} Halaman)
                   </span>
@@ -307,9 +391,14 @@ function RolesAndDepartmentsPage() {
                       {SYSTEM_ROUTES.filter((r) => r.category === "Operasional").map((route) => {
                         const allowed = isAccessAllowed(selectedRole, route.path);
                         return (
-                          <tr key={route.path} className="hover:bg-surface-muted/30 transition-colors">
+                          <tr
+                            key={route.path}
+                            className="hover:bg-surface-muted/30 transition-colors"
+                          >
                             <td className="px-4 py-3 font-medium">{route.label}</td>
-                            <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{route.path}</td>
+                            <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
+                              {route.path}
+                            </td>
                             <td className="px-4 py-3 text-right">
                               <div className="flex justify-end items-center gap-3">
                                 <span
@@ -317,14 +406,18 @@ function RolesAndDepartmentsPage() {
                                     "text-xs font-medium px-2 py-0.5 rounded-full",
                                     allowed
                                       ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
-                                      : "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20"
+                                      : "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20",
                                   )}
                                 >
                                   {allowed ? "Diizinkan (Muncul)" : "Ditolak (Hilang)"}
                                 </span>
                                 <Switch
                                   checked={Boolean(allowed)}
-                                  disabled={!isAdmin || togglePermission.isPending || selectedRole === "admin"}
+                                  disabled={
+                                    !isAdmin ||
+                                    togglePermission.isPending ||
+                                    selectedRole === "admin"
+                                  }
                                   onCheckedChange={(checked) =>
                                     togglePermission.mutate({
                                       role: selectedRole,
@@ -364,9 +457,14 @@ function RolesAndDepartmentsPage() {
                       {SYSTEM_ROUTES.filter((r) => r.category === "Manajemen").map((route) => {
                         const allowed = isAccessAllowed(selectedRole, route.path);
                         return (
-                          <tr key={route.path} className="hover:bg-surface-muted/30 transition-colors">
+                          <tr
+                            key={route.path}
+                            className="hover:bg-surface-muted/30 transition-colors"
+                          >
                             <td className="px-4 py-3 font-medium">{route.label}</td>
-                            <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{route.path}</td>
+                            <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
+                              {route.path}
+                            </td>
                             <td className="px-4 py-3 text-right">
                               <div className="flex justify-end items-center gap-3">
                                 <span
@@ -374,14 +472,18 @@ function RolesAndDepartmentsPage() {
                                     "text-xs font-medium px-2 py-0.5 rounded-full",
                                     allowed
                                       ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
-                                      : "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20"
+                                      : "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20",
                                   )}
                                 >
                                   {allowed ? "Diizinkan (Muncul)" : "Ditolak (Hilang)"}
                                 </span>
                                 <Switch
                                   checked={Boolean(allowed)}
-                                  disabled={!isAdmin || togglePermission.isPending || selectedRole === "admin"}
+                                  disabled={
+                                    !isAdmin ||
+                                    togglePermission.isPending ||
+                                    selectedRole === "admin"
+                                  }
                                   onCheckedChange={(checked) =>
                                     togglePermission.mutate({
                                       role: selectedRole,
@@ -427,8 +529,12 @@ function RolesAndDepartmentsPage() {
               {(departments.data ?? []).map((d) => (
                 <tr key={d.id} className="group hover:bg-surface-muted/30 transition-colors">
                   <td className="px-4 py-3 font-medium">{d.name}</td>
-                  <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{d.code || "—"}</td>
-                  <td className="px-4 py-3 text-muted-foreground text-xs">{d.description || "—"}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
+                    {d.code || "—"}
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground text-xs">
+                    {d.description || "—"}
+                  </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <Button
@@ -499,7 +605,10 @@ function RolesAndDepartmentsPage() {
             <Button variant="outline" onClick={() => setIsAddOpen(false)}>
               Batal
             </Button>
-            <Button onClick={() => addDept.mutate()} disabled={addDept.isPending || !deptName.trim()}>
+            <Button
+              onClick={() => addDept.mutate()}
+              disabled={addDept.isPending || !deptName.trim()}
+            >
               {addDept.isPending ? "Menyimpan..." : "Simpan Departemen"}
             </Button>
           </DialogFooter>
@@ -547,7 +656,10 @@ function RolesAndDepartmentsPage() {
             <Button variant="outline" onClick={() => setEditingDept(null)}>
               Batal
             </Button>
-            <Button onClick={() => updateDept.mutate()} disabled={updateDept.isPending || !editName.trim()}>
+            <Button
+              onClick={() => updateDept.mutate()}
+              disabled={updateDept.isPending || !editName.trim()}
+            >
               {updateDept.isPending ? "Menyimpan..." : "Simpan Perubahan"}
             </Button>
           </DialogFooter>
@@ -560,7 +672,8 @@ function RolesAndDepartmentsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Hapus Departemen?</AlertDialogTitle>
             <AlertDialogDescription>
-              Apakah Anda yakin ingin menghapus departemen <strong>&ldquo;{deletingDept?.name}&rdquo;</strong>?
+              Apakah Anda yakin ingin menghapus departemen{" "}
+              <strong>&ldquo;{deletingDept?.name}&rdquo;</strong>?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -72,11 +72,9 @@ function DashboardChecklistPage() {
     ? "admin"
     : roles.includes("qc_field")
       ? "qc_field"
-      : roles.includes("admin_process")
-        ? "admin_process"
-        : roles.includes("prod_process_uh")
-          ? "prod_process_uh"
-          : "admin_process";
+      : roles.includes("teknisi")
+        ? "teknisi"
+        : "prod_process_uh";
 
   const formulasi = useQuery({ queryKey: ["formulasi"], queryFn: fetchFormulasi });
   const grinding = useQuery({ queryKey: ["grinding"], queryFn: fetchGrinding });

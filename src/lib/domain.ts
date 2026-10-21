@@ -1,11 +1,11 @@
-export type AppRole = "admin_process" | "qc_field" | "prod_process_uh" | "admin";
+export type AppRole = "qc_field" | "prod_process_uh" | "teknisi" | "admin";
 export type FormStatus = "Draft" | "Pending QC" | "Approved" | "Rejected";
 export type Shift = "Shift 1" | "Shift 2" | "Shift 3";
 
 export const ROLE_LABELS: Record<AppRole, string> = {
-  admin_process: "CK1201",
   qc_field: "CI1201",
   prod_process_uh: "GDSP1201",
+  teknisi: "TEKNIK1201",
   admin: "Super Admin",
 };
 

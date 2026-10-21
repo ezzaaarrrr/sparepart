@@ -132,6 +132,9 @@ export function AppShell({
           [...OPERASIONAL, ...MANAJEMEN].forEach((route) => {
             if (role === "admin" || role === "qc_field") {
               defaults[`${role}:${route.to}`] = true;
+            } else if (role === "teknisi") {
+              defaults[`${role}:${route.to}`] =
+                route.to !== "/settings" && route.to !== "/roles";
             } else {
               defaults[`${role}:${route.to}`] = route.to === "/approvals";
             }
@@ -156,6 +159,7 @@ export function AppShell({
         return permissionsQuery.data[key];
       }
       if (r === "qc_field") return true;
+      if (r === "teknisi") return path !== "/settings" && path !== "/roles";
       return path === "/approvals";
     });
   };

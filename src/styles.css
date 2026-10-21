@@ -194,3 +194,34 @@
   font-variant-numeric: tabular-nums lining-nums;
   letter-spacing: 0.02em;
 }
+
+/* Hilangkan garis outline pada Recharts (khususnya Pie/Donut Chart saat hover / fokus / klik) */
+.recharts-wrapper,
+.recharts-wrapper *,
+.recharts-surface,
+.recharts-surface *,
+.recharts-layer,
+.recharts-sector,
+.recharts-pie-sector,
+.recharts-pie,
+path.recharts-sector,
+svg.recharts-surface {
+  outline: none !important;
+  box-shadow: none !important;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.recharts-wrapper *:focus,
+.recharts-wrapper *:focus-visible,
+.recharts-surface:focus,
+.recharts-surface:focus-visible,
+.recharts-sector:focus,
+.recharts-sector:focus-visible,
+.recharts-pie-sector:focus,
+.recharts-pie-sector:focus-visible,
+path.recharts-sector:focus,
+path.recharts-sector:focus-visible,
+path.recharts-sector:hover {
+  outline: none !important;
+}
+

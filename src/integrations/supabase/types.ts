@@ -487,7 +487,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin_process" | "qc_field" | "prod_process_uh" | "admin"
+      app_role: "admin_process" | "qc_field" | "prod_process_uh" | "teknisi" | "admin"
       shift_enum: "Shift 1" | "Shift 2" | "Shift 3"
       status_enum: "Draft" | "Pending QC" | "Approved" | "Rejected"
     }
@@ -617,7 +617,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin_process", "qc_field", "prod_process_uh", "admin"],
+      app_role: ["admin_process", "qc_field", "prod_process_uh", "teknisi", "admin"],
       shift_enum: ["Shift 1", "Shift 2", "Shift 3"],
       status_enum: ["Draft", "Pending QC", "Approved", "Rejected"],
     },

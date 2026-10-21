@@ -711,10 +711,7 @@ function DashboardPage() {
     ].filter((d) => d.value > 0);
 
     return (
-      <div
-        id="diagram-analisis-status-sparepart"
-        className="rise-in scroll-mt-20"
-      >
+      <div id="diagram-analisis-status-sparepart" className="rise-in scroll-mt-20">
         {/* 2 Kolom Komparasi: OBS Sparepart vs All Item Barang */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* Sisi Kiri: OBS Sparepart */}
@@ -733,11 +730,15 @@ function DashboardPage() {
 
             {/* Diagram Donat OBS Sparepart */}
             <div
-              className="relative h-44 sm:h-48 w-full flex items-center justify-center select-none"
+              className="relative h-44 sm:h-48 w-full flex items-center justify-center select-none [&_.recharts-surface]:outline-none [&_.recharts-layer]:outline-none [&_.recharts-sector]:outline-none [&_.recharts-pie-sector]:outline-none [&_path]:outline-none [&_svg]:outline-none"
               title="Klik irisan atau tengah diagram untuk melihat daftar barang"
             >
               <ResponsiveContainer width="100%" height="100%">
-                <PieChart onMouseLeave={() => setIsObsHovered(false)}>
+                <PieChart
+                  className="outline-none focus:outline-none"
+                  style={{ outline: "none" }}
+                  onMouseLeave={() => setIsObsHovered(false)}
+                >
                   <Pie
                     data={obsPieData}
                     cx="50%"
@@ -746,6 +747,8 @@ function DashboardPage() {
                     outerRadius={68}
                     dataKey="value"
                     cursor="pointer"
+                    className="outline-none focus:outline-none"
+                    style={{ outline: "none" }}
                     onMouseEnter={() => setIsObsHovered(true)}
                     onMouseLeave={() => setIsObsHovered(false)}
                     onClick={(entry: any) => {
@@ -759,7 +762,8 @@ function DashboardPage() {
                         key={`obs-pie-${index}`}
                         fill={entry.color}
                         cursor="pointer"
-                        className="hover:opacity-80 transition-opacity"
+                        className="hover:opacity-80 transition-opacity outline-none focus:outline-none focus:ring-0 select-none"
+                        style={{ outline: "none" }}
                         onMouseEnter={() => setIsObsHovered(true)}
                         onClick={(e: any) => {
                           if (e && e.stopPropagation) e.stopPropagation();
@@ -839,11 +843,15 @@ function DashboardPage() {
 
             {/* Diagram Donat All Item Barang */}
             <div
-              className="relative h-44 sm:h-48 w-full flex items-center justify-center select-none"
+              className="relative h-44 sm:h-48 w-full flex items-center justify-center select-none [&_.recharts-surface]:outline-none [&_.recharts-layer]:outline-none [&_.recharts-sector]:outline-none [&_.recharts-pie-sector]:outline-none [&_path]:outline-none [&_svg]:outline-none"
               title="Klik irisan atau tengah diagram untuk melihat daftar barang"
             >
               <ResponsiveContainer width="100%" height="100%">
-                <PieChart onMouseLeave={() => setIsAllHovered(false)}>
+                <PieChart
+                  className="outline-none focus:outline-none"
+                  style={{ outline: "none" }}
+                  onMouseLeave={() => setIsAllHovered(false)}
+                >
                   <Pie
                     data={allItemPieData}
                     cx="50%"
@@ -852,6 +860,8 @@ function DashboardPage() {
                     outerRadius={68}
                     dataKey="value"
                     cursor="pointer"
+                    className="outline-none focus:outline-none"
+                    style={{ outline: "none" }}
                     onMouseEnter={() => setIsAllHovered(true)}
                     onMouseLeave={() => setIsAllHovered(false)}
                     onClick={(entry: any) => {
@@ -865,7 +875,8 @@ function DashboardPage() {
                         key={`all-pie-${index}`}
                         fill={entry.color}
                         cursor="pointer"
-                        className="hover:opacity-80 transition-opacity"
+                        className="hover:opacity-80 transition-opacity outline-none focus:outline-none focus:ring-0 select-none"
+                        style={{ outline: "none" }}
                         onMouseEnter={() => setIsAllHovered(true)}
                         onClick={(e: any) => {
                           if (e && e.stopPropagation) e.stopPropagation();
@@ -882,9 +893,7 @@ function DashboardPage() {
                         if (!item) return null;
                         const val = Number(item.value) || 0;
                         const pct =
-                          ca.totalGabungan > 0
-                            ? ((val / ca.totalGabungan) * 100).toFixed(1)
-                            : 0;
+                          ca.totalGabungan > 0 ? ((val / ca.totalGabungan) * 100).toFixed(1) : 0;
                         return (
                           <div className="rounded-lg border border-border bg-surface p-2.5 shadow-xl text-xs space-y-0.5 z-50">
                             <p className="font-semibold text-foreground">{item.name}</p>
@@ -1153,7 +1162,9 @@ function DashboardPage() {
         baseCount = limitOnlyCount;
       } else if (selectedPieStatus === "Habis") {
         const pct =
-          totalActiveProducts > 0 ? ((zeroProductsCount / totalActiveProducts) * 100).toFixed(1) : "0";
+          totalActiveProducts > 0
+            ? ((zeroProductsCount / totalActiveProducts) * 100).toFixed(1)
+            : "0";
         modalTitle = "Daftar Item Stok Habis — OBS Sparepart";
         modalDesc = `Menampilkan ${zeroProductsCount} item barang OBS Sparepart dengan stok kosong (${pct}% dari total ${totalActiveProducts} barang).`;
         modalBadge = `${zeroProductsCount} Item Habis (${pct}%)`;
@@ -1185,7 +1196,8 @@ function DashboardPage() {
         modalIcon = <AlertTriangle className="size-5 text-rose-500" />;
         baseCount = ca.gabunganHabis;
       } else {
-        const allSafePctExact = ca.totalGabungan > 0 ? (ca.gabunganAman / ca.totalGabungan) * 100 : 0;
+        const allSafePctExact =
+          ca.totalGabungan > 0 ? (ca.gabunganAman / ca.totalGabungan) * 100 : 0;
         const g = getGradeInfo(allSafePctExact);
         modalTitle = "Daftar Item Stok Aman — All Item Barang";
         modalDesc = `Menampilkan ${ca.gabunganAman} item barang gabungan OBS & Buffer berstatus Aman (${allSafePctExact.toFixed(1)}%) sesuai persentase KPI diagram [${g.badgeText}] dari total ${ca.totalGabungan} barang.`;
@@ -1605,9 +1617,9 @@ function DashboardPage() {
     if (activeProducts.length === 0) return null;
 
     return (
-      <div className="rise-in border border-border bg-surface rounded-xl p-4 flex flex-col space-y-3 shadow-xs h-full">
+      <div className="rise-in border border-border bg-surface rounded-xl p-4 flex flex-col space-y-3 shadow-xs">
         {/* Header Bagan */}
-        <div className="flex items-center justify-center border-b border-border/80 pb-2">
+        <div className="flex items-center justify-between border-b border-border/80 pb-2">
           <div className="flex items-center gap-1.5">
             <Wrench className="size-3.5 text-primary shrink-0" />
             <span className="text-xs font-bold uppercase tracking-wider text-foreground">
@@ -1647,58 +1659,67 @@ function DashboardPage() {
                       <div className="bg-surface/98 backdrop-blur-md border border-border shadow-2xl rounded-xl p-3.5 max-w-xs sm:max-w-sm space-y-2.5 z-50 text-xs">
                         {/* 1. Material */}
                         <div>
-                          <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider block">
-                            Material
-                          </span>
-                          <div className="font-bold text-foreground text-xs leading-snug break-words mt-0.5">
+                          <div className="font-bold text-foreground text-xs leading-snug break-words">
                             {data.fullName}
                           </div>
-                        </div>
-
-                        {/* 2. Kode */}
-                        <div>
-                          <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider block">
-                            Kode
-                          </span>
-                          <div className="font-mono text-xs font-semibold text-foreground mt-0.5">
-                            {data.code}
+                          <div className="font-mono text-[11px] text-muted-foreground mt-0.5">
+                            SKU: {data.code}
                           </div>
                         </div>
 
-                        {/* 3. Frekuensi Keluar & 4. Total Keluar & 5. Stok Saat Ini */}
-                        <div className="grid grid-cols-2 gap-2 pt-1 border-t border-border/60">
-                          <div className="bg-surface-muted/60 rounded-lg p-2 border border-border/50">
-                            <span className="text-[10px] text-muted-foreground font-semibold uppercase block">
-                              Frekuensi Keluar
-                            </span>
-                            <div className="flex items-baseline gap-1 mt-0.5">
-                              <span className="font-mono font-extrabold text-sm text-primary">
-                                {data.frequency.toLocaleString("id-ID")}x
-                              </span>
+                        {/* Rincian data */}
+                        <div className="space-y-1.5 pt-2 border-t border-border/60 text-[11px]">
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground">Frekuensi Keluar:</span>
+                            <span className="font-mono font-bold text-foreground">
+                              {data.frequency} kali transaksi
                               {data.freqToday > 0 && (
-                                <span className="text-[9.5px] font-medium text-amber-600 dark:text-amber-400">
-                                  (+{data.freqToday} hr ini)
+                                <span className="text-amber-600 dark:text-amber-400 font-semibold text-[10px] ml-1">
+                                  (+{data.freqToday})
                                 </span>
                               )}
-                            </div>
+                            </span>
                           </div>
 
-                          <div className="bg-rose-500/5 dark:bg-rose-500/10 rounded-lg p-2 border border-rose-500/20">
-                            <span className="text-[10px] text-rose-600 dark:text-rose-400 font-semibold uppercase block">
-                              Total Keluar
-                            </span>
-                            <span className="font-mono font-extrabold text-sm text-rose-600 dark:text-rose-400 mt-0.5 block">
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground">Total Qty Keluar:</span>
+                            <span className="font-mono font-bold text-rose-600 dark:text-rose-400">
                               {data.totalQtyOut.toLocaleString("id-ID")}{" "}
-                              <span className="text-[10px] font-normal">{data.unit}</span>
+                              <span className="uppercase text-[10px]">{data.unit}</span>
                             </span>
                           </div>
 
-                          <div className="bg-surface-muted/60 rounded-lg p-2 border border-border/50 col-span-2 flex items-center justify-between">
-                            <span className="text-[10px] text-muted-foreground font-semibold uppercase block">
-                              Stok Saat Ini
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground">Sisa Stok Fisik:</span>
+                            <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                              {data.stock.toLocaleString("id-ID")}{" "}
+                              <span className="uppercase text-[10px]">{data.unit}</span>
                             </span>
-                            <span className="font-mono font-extrabold text-xs text-foreground">
-                              {data.stock.toLocaleString("id-ID")} {data.unit}
+                          </div>
+
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground">Batas Minimum:</span>
+                            <span className="font-mono font-bold text-muted-foreground">
+                              {data.minStock.toLocaleString("id-ID")}{" "}
+                              <span className="uppercase text-[10px]">{data.unit}</span>
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between pt-1 border-t border-border/40">
+                            <span className="text-muted-foreground font-semibold">
+                              Status Stok:
+                            </span>
+                            <span
+                              className={cn(
+                                "font-bold text-[10.5px] uppercase",
+                                data.status === "Critical"
+                                  ? "text-rose-600 dark:text-rose-400"
+                                  : data.status === "Low Stock"
+                                    ? "text-amber-600 dark:text-amber-400"
+                                    : "text-emerald-600 dark:text-emerald-400",
+                              )}
+                            >
+                              {data.status}
                             </span>
                           </div>
                         </div>
@@ -1721,6 +1742,72 @@ function DashboardPage() {
               </Bar>
             </BarChart>
           </ResponsiveContainer>
+        </div>
+
+        {/* Tabel Informasi Top 10 Outgoing (Tepat di Bawah Bagan sesuai desain referensi) */}
+        <div className="pt-1">
+          <div className="rounded-lg border border-border/80 overflow-hidden bg-surface">
+            <div className="max-h-[230px] overflow-y-auto">
+              <table className="w-full text-xs">
+                <thead className="sticky top-0 bg-slate-50/95 dark:bg-slate-800/95 backdrop-blur-xs z-10 border-b border-border shadow-2xs">
+                  <tr className="text-muted-foreground font-semibold">
+                    <th className="px-3 py-2.5 text-left w-10 text-xs font-semibold">#</th>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold">Nama Sparepart</th>
+                    <th className="px-3 py-2.5 text-center text-xs font-semibold w-24">
+                      Frekuensi
+                    </th>
+                    <th className="px-3 py-2.5 text-right text-xs font-semibold w-28">
+                      Total Keluar
+                    </th>
+                    <th className="px-3 py-2.5 text-right text-xs font-semibold w-24">Sisa Stok</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/60">
+                  {inventoryChartData.map((item) => (
+                    <tr
+                      key={item.id}
+                      onClick={() => setSelectedOutgoingSparepart(item)}
+                      className="hover:bg-surface-muted/50 cursor-pointer transition-colors"
+                      title="Klik untuk membuka rincian sparepart ini"
+                    >
+                      <td className="px-3 py-2.5 text-left text-muted-foreground font-normal text-xs">
+                        {item.rank}
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <div className="font-bold text-foreground text-xs leading-snug">
+                          {item.fullName}
+                        </div>
+                        <div className="text-[11px] text-muted-foreground mt-0.5">
+                          SKU: {item.code}
+                        </div>
+                      </td>
+                      <td className="px-3 py-2.5 text-center">
+                        <span className="font-bold text-xs text-amber-700 dark:text-amber-500">
+                          {item.frequency}x
+                        </span>
+                      </td>
+                      <td className="px-3 py-2.5 text-right">
+                        <span className="font-bold text-xs text-rose-600 dark:text-rose-500">
+                          {item.totalQtyOut.toLocaleString("id-ID")}
+                        </span>{" "}
+                        <span className="text-[11px] text-muted-foreground lowercase">
+                          {item.unit}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2.5 text-right">
+                        <span className="font-bold text-xs text-foreground">
+                          {item.stock.toLocaleString("id-ID")}
+                        </span>{" "}
+                        <span className="text-[11px] text-muted-foreground lowercase">
+                          {item.unit}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -2316,11 +2403,9 @@ function DashboardPage() {
     ? "admin"
     : roles.includes("qc_field")
       ? "qc_field"
-      : roles.includes("admin_process")
-        ? "admin_process"
-        : roles.includes("prod_process_uh")
-          ? "prod_process_uh"
-          : "admin_process";
+      : roles.includes("teknisi")
+        ? "teknisi"
+        : "prod_process_uh";
 
   // Handlers Export Laporan Dashboard OBS Sparepart
   const handleExportInventory = () => {
@@ -2441,160 +2526,13 @@ function DashboardPage() {
           {renderCombinedAnalysisPanel()}
 
           {/* Section: Status Stok Barang & TOP 10 Outgoing Berdampingan */}
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-stretch">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
             {/* Card 1: Diagram & Analisis Status Barang & Sparepart */}
             {renderStockAnalysisCard()}
 
             {/* Card 2: TOP 10 OUTGOING SPAREPART */}
             {renderInventoryChartPanel()}
           </div>
-
-          {/* Section Bawah: Aktivitas Mutasi Gudang */}
-          <Panel
-            title="Aktivitas Mutasi Gudang"
-            description="Riwayat transaksi pencatatan barang masuk (In) & barang keluar (Out)"
-            actions={
-              <Link to="/products" search={{ tab: "transactions" }}>
-                <Button size="sm" variant="outline" className="h-7 text-xs gap-1">
-                  <History className="size-3.5 text-primary" />
-                  Lihat Semua Mutasi →
-                </Button>
-              </Link>
-            }
-            bodyClassName="p-0"
-          >
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border bg-surface-muted/50">
-                    <th className="label-caps px-4 py-2.5 text-left w-36">No. Transaksi</th>
-                    <th className="label-caps px-4 py-2.5 text-left w-28">Tipe Mutasi</th>
-                    <th className="label-caps px-4 py-2.5 text-left min-w-[380px] md:min-w-[480px]">
-                      Nama Sparepart & Jumlah
-                    </th>
-                    <th className="label-caps px-4 py-2.5 text-left w-36">Batch / Ref No</th>
-                    <th className="label-caps px-4 py-2.5 text-left w-40">Pihak / Tujuan</th>
-                    <th className="label-caps px-4 py-2.5 text-left w-36">Waktu & Petugas</th>
-                    <th className="label-caps px-4 py-2.5 text-right w-36">Aksi & Dokumen</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {warehouseTx.isLoading && (
-                    <tr>
-                      <td colSpan={7} className="px-5 py-8 text-center text-muted-foreground">
-                        Memuat data mutasi gudang...
-                      </td>
-                    </tr>
-                  )}
-                  {groupedTxData.slice(0, 8).map((tx) => (
-                    <tr key={tx.transaction_number} className="hover:bg-surface-muted/30">
-                      <td className="px-4 py-3 font-mono text-xs font-medium text-foreground">
-                        {tx.transaction_number}
-                      </td>
-                      <td className="px-4 py-3">
-                        <Badge
-                          variant={tx.tx_type === "IN" ? "default" : "destructive"}
-                          className={
-                            tx.tx_type === "IN"
-                              ? "text-[10px] font-mono bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 uppercase"
-                              : "text-[10px] font-mono bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/20 uppercase"
-                          }
-                        >
-                          {tx.tx_type === "IN" ? "Masuk (In)" : "Keluar (Out)"}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3 min-w-[380px] md:min-w-[480px]">
-                        <div className="space-y-1.5">
-                          {tx.items.map((it, idx) => (
-                            <div
-                              key={it.id || idx}
-                              className="flex items-center justify-between gap-3 text-xs bg-surface-muted/50 hover:bg-surface-muted px-2.5 py-1 rounded border border-border/50 transition-colors"
-                            >
-                              <span className="font-semibold text-foreground leading-snug">
-                                {idx + 1}. {it.product_name}
-                              </span>
-                              <Badge
-                                variant="outline"
-                                className={cn(
-                                  "font-mono font-bold text-xs shrink-0 px-1.5 py-0",
-                                  tx.tx_type === "IN"
-                                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/25"
-                                    : "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/25",
-                                )}
-                              >
-                                {tx.tx_type === "IN" ? "+" : "-"}
-                                {it.quantity} {it.unit || "pcs"}
-                              </Badge>
-                            </div>
-                          ))}
-                          {tx.items.length > 1 && (
-                            <div className="text-[10px] text-muted-foreground px-1">
-                              Total: {tx.items.length} item sparepart
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-muted-foreground">
-                        <div>Batch: {tx.batch_number || "—"}</div>
-                        <div className="text-[10px] font-mono">Ref: {tx.reference_no || "—"}</div>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-muted-foreground">
-                        {tx.supplier_or_dest || "—"}
-                      </td>
-                      <td className="px-4 py-3 text-xs text-muted-foreground">
-                        <div>{formatDate(tx.created_at)}</div>
-                        <div className="font-medium text-foreground">
-                          {tx.created_by_name || "Petugas"}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setSelectedTx(tx)}
-                            className="h-7 text-xs px-2 gap-1"
-                            title="Lihat detail mutasi"
-                          >
-                            <Eye className="size-3.5 text-primary" />
-                            <span>Detail</span>
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => downloadTransactionPDF(tx)}
-                            className="h-7 text-xs px-2 gap-1 bg-primary/5 hover:bg-primary/10 text-primary border-primary/20"
-                            title="Cetak & Unduh Dokumen PDF Mutasi (1 Bon)"
-                          >
-                            <Download className="size-3.5" />
-                            <span>PDF</span>
-                          </Button>
-                          {tx.document_url && (
-                            <a
-                              href={tx.document_url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground underline px-1"
-                              title="Lihat lampiran berkas asli"
-                            >
-                              <FileText className="size-3.5" />
-                            </a>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                  {!warehouseTx.isLoading && groupedTxData.length === 0 && (
-                    <tr>
-                      <td colSpan={7} className="px-5 py-8 text-center text-muted-foreground">
-                        Belum ada riwayat transaksi mutasi barang.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </Panel>
         </div>
       )}
 
@@ -2604,7 +2542,7 @@ function DashboardPage() {
           {renderCombinedAnalysisPanel()}
 
           {/* Section: Status Stok Barang & TOP 10 Outgoing Berdampingan */}
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-stretch">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
             {/* Card 1: Diagram & Analisis Status Barang & Sparepart */}
             {renderStockAnalysisCard()}
 
@@ -2614,7 +2552,7 @@ function DashboardPage() {
         </div>
       )}
 
-      {userRole === "admin_process" && (
+      {userRole === "teknisi" && (
         <div className="space-y-6">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <StatCard label="Form Diajukan" value={all.length} hint="Total input operator" />
@@ -2678,7 +2616,7 @@ function DashboardPage() {
           {renderCombinedAnalysisPanel()}
 
           {/* Section: Status Stok Barang & TOP 10 Outgoing Berdampingan */}
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-stretch">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
             {/* Card 1: Diagram & Analisis Status Barang & Sparepart */}
             {renderStockAnalysisCard()}
 
@@ -2908,9 +2846,7 @@ function DashboardPage() {
                     </span>
                     <span className="font-mono font-extrabold text-xl text-rose-600 dark:text-rose-400 mt-1 block">
                       {selectedOutgoingSparepart.totalQtyOut.toLocaleString("id-ID")}{" "}
-                      <span className="text-xs font-normal">
-                        {selectedOutgoingSparepart.unit}
-                      </span>
+                      <span className="text-xs font-normal">{selectedOutgoingSparepart.unit}</span>
                     </span>
                   </div>
 
@@ -2932,9 +2868,7 @@ function DashboardPage() {
                     </span>
                     <span className="font-mono font-extrabold text-base text-muted-foreground mt-1 block">
                       {selectedOutgoingSparepart.minStock.toLocaleString("id-ID")}{" "}
-                      <span className="text-xs font-normal">
-                        {selectedOutgoingSparepart.unit}
-                      </span>
+                      <span className="text-xs font-normal">{selectedOutgoingSparepart.unit}</span>
                     </span>
                   </div>
                 </div>
@@ -2949,11 +2883,7 @@ function DashboardPage() {
                 Lihat Riwayat Mutasi →
               </Button>
             </Link>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setSelectedOutgoingSparepart(null)}
-            >
+            <Button variant="outline" size="sm" onClick={() => setSelectedOutgoingSparepart(null)}>
               Tutup
             </Button>
           </DialogFooter>
