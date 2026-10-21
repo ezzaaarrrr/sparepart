@@ -92,7 +92,7 @@ function RolesAndDepartmentsPage() {
   const [deletingDept, setDeletingDept] = useState<DepartmentRow | null>(null);
 
   // Active Role tab untuk Pengaturan Hak Akses
-  const [selectedRole, setSelectedRole] = useState<AppRole>("admin_process");
+  const [selectedRole, setSelectedRole] = useState<AppRole>("qc_field");
 
   // Query Data Departemen
   const departments = useQuery({
@@ -156,31 +156,46 @@ function RolesAndDepartmentsPage() {
   const permissionsQuery = useQuery({
     queryKey: ["role_permissions"],
     queryFn: async () => {
-      const { data, error } = await (supabase as any).from("role_permissions").select("*");
-      if (error) {
-        // Fallback default jika tabel belum disinkronkan di Supabase remote
-        const defaults: Record<string, boolean> = {};
-        (Object.keys(ROLE_LABELS) as AppRole[]).forEach((role) => {
-          SYSTEM_ROUTES.forEach((route) => {
-            if (role === "admin" || role === "qc_field") {
-              defaults[`${role}:${route.path}`] = true;
-            } else if (role === "teknisi") {
-              defaults[`${role}:${route.path}`] =
-                route.category === "Operasional" ||
-                route.path === "/products" ||
-                route.path === "/approvals";
-            } else {
-              defaults[`${role}:${route.path}`] = route.path === "/approvals";
-            }
-          });
+      // 1. Ambil data dari localStorage jika ada override
+      let localPermissions: Record<string, boolean> = {};
+      try {
+        const stored = localStorage.getItem("custom_role_permissions");
+        if (stored) localPermissions = JSON.parse(stored);
+      } catch {}
+
+      const defaults: Record<string, boolean> = {};
+      (Object.keys(ROLE_LABELS) as AppRole[]).forEach((role) => {
+        SYSTEM_ROUTES.forEach((route) => {
+          if (role === "admin" || role === "qc_field") {
+            defaults[`${role}:${route.path}`] = true;
+          } else if (role === "teknisi") {
+            defaults[`${role}:${route.path}`] =
+              route.category === "Operasional" ||
+              route.path === "/products" ||
+              route.path === "/approvals";
+          } else {
+            defaults[`${role}:${route.path}`] = route.path === "/approvals";
+          }
         });
-        return defaults;
+      });
+
+      const { data, error } = await (supabase as any).from("role_permissions").select("*");
+      const map: Record<string, boolean> = { ...defaults };
+
+      if (!error && data && data.length > 0) {
+        data.forEach((item: any) => {
+          map[`${item.role}:${item.route_path}`] = item.can_access;
+          // Sinkronisasi dua arah untuk kompatibilitas database enum app_role (admin_process <-> teknisi)
+          if (item.role === "admin_process") {
+            map[`teknisi:${item.route_path}`] = item.can_access;
+          } else if (item.role === "teknisi") {
+            map[`admin_process:${item.route_path}`] = item.can_access;
+          }
+        });
       }
 
-      const map: Record<string, boolean> = {};
-      (data ?? []).forEach((item: any) => {
-        map[`${item.role}:${item.route_path}`] = item.can_access;
-      });
+      // Gabungkan dengan konfigurasi izin lokal browser
+      Object.assign(map, localPermissions);
       return map;
     },
   });
@@ -196,13 +211,36 @@ function RolesAndDepartmentsPage() {
       routePath: string;
       canAccess: boolean;
     }) => {
-      const { error } = await (supabase as any)
-        .from("role_permissions")
-        .upsert(
-          { role, route_path: routePath, can_access: canAccess },
-          { onConflict: "role,route_path" },
-        );
-      if (error) throw error;
+      // 1. Simpan ke localStorage secara instan & persisten
+      try {
+        const stored = localStorage.getItem("custom_role_permissions");
+        const map = stored ? JSON.parse(stored) : {};
+        map[`${role}:${routePath}`] = canAccess;
+        if (role === "teknisi") {
+          map[`admin_process:${routePath}`] = canAccess;
+        } else if (role === "admin_process") {
+          map[`teknisi:${routePath}`] = canAccess;
+        }
+        localStorage.setItem("custom_role_permissions", JSON.stringify(map));
+      } catch (err) {
+        console.warn("Gagal menyimpan izin ke localStorage:", err);
+      }
+
+      // 2. Kirim ke Supabase remote (gunakan admin_process untuk kompatibilitas enum app_role PostgreSQL)
+      const dbRole = role === "teknisi" ? "admin_process" : role;
+      try {
+        const { error } = await (supabase as any)
+          .from("role_permissions")
+          .upsert(
+            { role: dbRole, route_path: routePath, can_access: canAccess },
+            { onConflict: "role,route_path" },
+          );
+        if (error) {
+          console.warn("Supabase role_permissions warning (disimpan secara lokal):", error.message);
+        }
+      } catch (err: any) {
+        console.warn("Supabase role_permissions error:", err);
+      }
     },
     onSuccess: () => {
       toast.success("Hak akses halaman berhasil diperbarui");
@@ -301,6 +339,12 @@ function RolesAndDepartmentsPage() {
     const key = `${role}:${path}`;
     if (permissionsQuery.data && key in permissionsQuery.data) {
       return permissionsQuery.data[key];
+    }
+    if (role === "teknisi") {
+      const fallbackKey = `admin_process:${path}`;
+      if (permissionsQuery.data && fallbackKey in permissionsQuery.data) {
+        return permissionsQuery.data[fallbackKey];
+      }
     }
     // Rules:
     // CI (qc_field) & Super Admin (admin) -> Bisa mengakses semua halaman

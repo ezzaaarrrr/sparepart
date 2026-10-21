@@ -125,27 +125,40 @@ export function AppShell({
   const permissionsQuery = useQuery({
     queryKey: ["role_permissions"],
     queryFn: async () => {
-      const { data, error } = await (supabase as any).from("role_permissions").select("*");
-      if (error) {
-        const defaults: Record<string, boolean> = {};
-        (Object.keys(ROLE_LABELS) as AppRole[]).forEach((role) => {
-          [...OPERASIONAL, ...MANAJEMEN].forEach((route) => {
-            if (role === "admin" || role === "qc_field") {
-              defaults[`${role}:${route.to}`] = true;
-            } else if (role === "teknisi") {
-              defaults[`${role}:${route.to}`] =
-                route.to !== "/settings" && route.to !== "/roles";
-            } else {
-              defaults[`${role}:${route.to}`] = route.to === "/approvals";
-            }
-          });
+      let localPermissions: Record<string, boolean> = {};
+      try {
+        const stored = localStorage.getItem("custom_role_permissions");
+        if (stored) localPermissions = JSON.parse(stored);
+      } catch {}
+
+      const defaults: Record<string, boolean> = {};
+      (Object.keys(ROLE_LABELS) as AppRole[]).forEach((role) => {
+        [...OPERASIONAL, ...MANAJEMEN].forEach((route) => {
+          if (role === "admin" || role === "qc_field") {
+            defaults[`${role}:${route.to}`] = true;
+          } else if (role === "teknisi") {
+            defaults[`${role}:${route.to}`] =
+              route.to !== "/settings" && route.to !== "/roles";
+          } else {
+            defaults[`${role}:${route.to}`] = route.to === "/approvals";
+          }
         });
-        return defaults;
-      }
-      const map: Record<string, boolean> = {};
-      (data ?? []).forEach((item: any) => {
-        map[`${item.role}:${item.route_path}`] = item.can_access;
       });
+
+      const { data, error } = await (supabase as any).from("role_permissions").select("*");
+      const map: Record<string, boolean> = { ...defaults };
+      if (!error && data && data.length > 0) {
+        data.forEach((item: any) => {
+          map[`${item.role}:${item.route_path}`] = item.can_access;
+          if (item.role === "admin_process") {
+            map[`teknisi:${item.route_path}`] = item.can_access;
+          } else if (item.role === "teknisi") {
+            map[`admin_process:${item.route_path}`] = item.can_access;
+          }
+        });
+      }
+
+      Object.assign(map, localPermissions);
       return map;
     },
   });
@@ -157,6 +170,12 @@ export function AppShell({
       const key = `${r}:${path}`;
       if (permissionsQuery.data && key in permissionsQuery.data) {
         return permissionsQuery.data[key];
+      }
+      if (r === "teknisi") {
+        const fallbackKey = `admin_process:${path}`;
+        if (permissionsQuery.data && fallbackKey in permissionsQuery.data) {
+          return permissionsQuery.data[fallbackKey];
+        }
       }
       if (r === "qc_field") return true;
       if (r === "teknisi") return path !== "/settings" && path !== "/roles";
