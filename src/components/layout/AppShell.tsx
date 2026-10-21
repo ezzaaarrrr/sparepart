@@ -189,6 +189,8 @@ export function AppShell({
           key={`${item.to}-${item.search?.tab || idx}`}
           to={item.to}
           search={item.search as any}
+          target="_blank"
+          rel="noopener noreferrer"
           className={cn(
             "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
             active
@@ -211,20 +213,25 @@ export function AppShell({
         )}
       >
         <div className="border-b border-blue-900/40 p-4 shrink-0">
-          <div className="flex items-center gap-3">
+          <Link
+            to="/dashboard"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 group"
+          >
             <div className="flex size-14 shrink-0 items-center justify-center">
               <img
                 src="/logo-sparepart-icon.png"
                 alt="Logo Sparepart"
-                className="size-full object-contain drop-shadow-md hover:scale-105 transition-transform"
+                className="size-full object-contain drop-shadow-md group-hover:scale-105 transition-transform"
               />
             </div>
             {!collapsed && (
-              <span className="text-xl font-bold uppercase tracking-tighter leading-none text-white">
+              <span className="text-xl font-bold uppercase tracking-tighter leading-none text-white group-hover:text-blue-200 transition-colors">
                 Gudang Sparepart <span className="text-amber-300">M2</span>
               </span>
             )}
-          </div>
+          </Link>
         </div>
 
         <nav className="flex-1 space-y-1 p-3 overflow-y-auto">
@@ -264,7 +271,12 @@ export function AppShell({
             )}
           </button>
           {!collapsed && (
-            <Link to="/profile" className="mt-2 flex items-center gap-3 px-3 py-2 rounded-md hover:bg-white/5 transition-colors">
+            <Link
+              to="/profile"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 flex items-center gap-3 px-3 py-2 rounded-md hover:bg-white/5 transition-colors"
+            >
               <div className="grid size-8 shrink-0 place-items-center rounded-full bg-blue-900/60 text-blue-200 border border-blue-800/50 font-mono text-xs font-bold">
                 {initials}
               </div>
@@ -303,7 +315,12 @@ export function AppShell({
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link to="/profile" className="cursor-pointer">
+                  <Link
+                    to="/profile"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="cursor-pointer"
+                  >
                     <User className="mr-2 size-4" /> Pengaturan Akun
                   </Link>
                 </DropdownMenuItem>
